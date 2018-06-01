@@ -73,23 +73,23 @@ def ReadImgs(file_list):
         yield x1, labels, img_nms
 #
 def TumorToLabel(tumor):
-    if(tumor == "fibroadenoma"):
+    if(tumor.find("SOB_B_F") != -1):
         return numpy.array([0,1])
-    if(tumor == "mucinous_carcinoma"):
+    if(tumor.find("SOB_M_MC") != -1):
         return numpy.array([1,0])
-    if(tumor == "papillary_carcinoma"):
+    if(tumor.find("SOB_M_PT") != -1):
         return numpy.array([1,0])
-    if(tumor == "ductal_carcinoma"):
+    if(tumor.find("SOB_M_DC") != -1):
         return numpy.array([1,0])
-    if(tumor == "tubular_adenoma"):
+    if(tumor.find("SOB_B_TA") != -1):
         return numpy.array([0,1])
-    if(tumor == "adenosis"):
+    if(tumor.find("SOB_B_A") != -1):
         return numpy.array([0,1])
-    if(tumor == "lobular_carcinoma"):
+    if(tumor.find("SOB_M_LC") != -1):
         return numpy.array([1,0])
-    if(tumor == "phyllodes_tumor"):
+    if(tumor.find("SOB_B_PT") != -1):
         return numpy.array([0,1])
-    exit(0)
+    print("Error tumor type")
     return numpy.array([0,1])
 #
 def ExtractFeature(img_name, db_handler):
