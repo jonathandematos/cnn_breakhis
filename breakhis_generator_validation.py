@@ -21,7 +21,7 @@ def LoadBreakhisList(filename):
     #
     return file_list
 #
-def Generator(file_list, batch_size=32):
+def Generator(file_list, batch_size=32, width=224, height=224):
     lmdb_file = "lmdb_test.db/"
     env_handler = lmdb.open(lmdb_file, readonly=True)
     db_handler = env_handler.begin()
@@ -37,15 +37,15 @@ def Generator(file_list, batch_size=32):
                 x2 = list()
                 labels = list()
                 j = 0
-            img = image.load_img(i, target_size=(224,224))
+            img = image.load_img(i, target_size=(height, width))
             x1.append(numpy.array(img_to_array(img)).astype('float32')/255)
             x2.append(numpy.array(ExtractFeature(i, db_handler)))
-            y = TumorToLabel(i.split("/")[-2])
+            y = TumorToLabel(i)
             labels.append(y)
             j += 1
     env_handler.close()
 #
-def GeneratorImgs(file_list, batch_size=32):
+def GeneratorImgs(file_list, batch_size=32, width=224, height=224):
     while( 1 ):
         j = 0
         x1 = list()
@@ -57,19 +57,19 @@ def GeneratorImgs(file_list, batch_size=32):
                 labels = list()
                 img_nms = list()
                 j = 0
-            img = image.load_img(i, target_size=(224,224))
+            img = image.load_img(i, target_size=(height,width))
             x1.append(numpy.array(img_to_array(img)).astype('float32')/255)
-            y = TumorToLabel(i.split("/")[7])
+            y = TumorToLabel(i)
             labels.append(y)
             j += 1
 #
-def ReadImgs(file_list):
+def ReadImgs(file_list, width=224, height=224):
     j = 0
     for i in file_list:
-        img = image.load_img(i, target_size=(224,224))
+        img = image.load_img(i, target_size=(height,width))
         x1 = numpy.array(img_to_array(img)).astype('float32')/255
         img_nms = i
-        labels = TumorToLabel(i.split("/")[-2])
+        labels = TumorToLabel(i)
         yield x1, labels, img_nms
 #
 def TumorToLabel(tumor):
@@ -77,7 +77,7 @@ def TumorToLabel(tumor):
         return numpy.array([0,1])
     if(tumor.find("SOB_M_MC") != -1):
         return numpy.array([1,0])
-    if(tumor.find("SOB_M_PT") != -1):
+    if(tumor.find("SOB_M_PC") != -1):
         return numpy.array([1,0])
     if(tumor.find("SOB_M_DC") != -1):
         return numpy.array([1,0])
@@ -89,7 +89,7 @@ def TumorToLabel(tumor):
         return numpy.array([1,0])
     if(tumor.find("SOB_B_PT") != -1):
         return numpy.array([0,1])
-    print("Error tumor type")
+    print("Error tumor type: {}".format(tumor))
     return numpy.array([0,1])
 #
 def ExtractFeature(img_name, db_handler):
