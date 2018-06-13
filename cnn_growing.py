@@ -29,8 +29,8 @@ tf_bkend.set_session(sess)
 #
 #
 sys.stdout = open(sys.argv[2], "w")
-EPOCHS = 1
-BATCH_SIZE = 16
+EPOCHS = 40
+BATCH_SIZE = 32
 HOME = os.environ['HOME']
 TRAIN_EXPERIMENT = sys.argv[3]
 TRAIN_FILE = TRAIN_EXPERIMENT #HOME+"/data/BreaKHis_v1/folds_nonorm_dataaug/dsfold2-100-train.txt"
@@ -57,11 +57,11 @@ def build_cnn(nr_convs):
     if(nr_convs > 2):
         model.add(Conv2D(32, (3, 3), name="conv3", activation='relu'))
         model.add(BatchNormalization(axis=3, name="batch3"))
-        model.add(MaxPooling2D(pool_size=(2,2), name="max3"))
+        #model.add(MaxPooling2D(pool_size=(2,2), name="max3"))
         #model.add(Dropout(0.25))
 
     if(nr_convs > 3):
-        model.add(Conv2D(192, (3, 3), name="conv4", activation='relu'))
+        model.add(Conv2D(32, (3, 3), name="conv4", activation='relu'))
         model.add(BatchNormalization(axis=3, name="batch4"))
         model.add(MaxPooling2D(pool_size=(2,2), name="max4"))
         #model.add(Dropout(0.25))
@@ -102,7 +102,7 @@ def build_cnn(nr_convs):
 
     model.add(Dense(2048, activation='relu'))
 
-    model.add(Dropout(0.25))
+    #model.add(Dropout(0.25))
 
     model.add(Dense(64, activation='relu'))
 
@@ -137,7 +137,7 @@ def set_callbacks(run_name):
     reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-11)
     callbacks.append(reduce_lr)
     #
-    earlyStopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1, mode='min')
+    earlyStopping = EarlyStopping(monitor='val_loss', patience=15, verbose=1, mode='min')
     callbacks.append(earlyStopping)
     return callbacks
 #
@@ -259,6 +259,7 @@ def print_prediction(model, img_list, main_batch_size, run_name, output_predicti
                 print("Zero predictions in one class.")
     print("Confusion by tumor type: ", conf_by_tumor)
     print("Accuracy by patient: ", accuracy_by_patient(img_list, labels, preds))
+    print("M_LC\nM_MC\nM_PC\nM_DC\nB_TA\nB_A\nB_PT\nB_F")
 #
 #
 #
