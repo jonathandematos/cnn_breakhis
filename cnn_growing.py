@@ -259,6 +259,7 @@ def print_prediction(model, img_list, main_batch_size, run_name, output_predicti
                 print("Zero predictions in one class.")
     print("Confusion by tumor type: ", conf_by_tumor)
     print("Accuracy by patient: ", accuracy_by_patient(img_list, labels, preds))
+    print("Malign  Benign")
     print("M_LC\nM_MC\nM_PC\nM_DC\nB_TA\nB_A\nB_PT\nB_F")
 #
 #
