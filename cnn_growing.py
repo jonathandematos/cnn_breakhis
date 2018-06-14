@@ -49,7 +49,7 @@ def build_cnn(nr_convs):
     model.add(MaxPooling2D(pool_size=(2,2), name="max1"))
     
     if(nr_convs > 1):
-        model.add(Conv2D(64, (5, 5), strides=(1,1), name="conv2", activation='relu'))
+        model.add(Conv2D(64, (3, 3), strides=(1,1), name="conv2", activation='relu'))
         model.add(BatchNormalization(axis=3, name="batch2"))
         model.add(MaxPooling2D(pool_size=(2,2), name="max2"))
         #model.add(Dropout(0.25))
@@ -57,7 +57,7 @@ def build_cnn(nr_convs):
     if(nr_convs > 2):
         model.add(Conv2D(32, (3, 3), name="conv3", activation='relu'))
         model.add(BatchNormalization(axis=3, name="batch3"))
-        #model.add(MaxPooling2D(pool_size=(2,2), name="max3"))
+        model.add(MaxPooling2D(pool_size=(2,2), name="max3"))
         #model.add(Dropout(0.25))
 
     if(nr_convs > 3):
@@ -93,14 +93,14 @@ def build_cnn(nr_convs):
         model.add(BatchNormalization(axis=3, name="batch9"))
         model.add(MaxPooling2D(pool_size=(2,2), name="max9"))
 
-    model.add(Dropout(0.25))
+    model.add(Dropout(0.40))
     #
     model.add(Flatten())
 
     #model.add(Dense(2048, activation='relu'))
     #model.add(Dropout(0.25))
 
-    model.add(Dense(2048, activation='relu'))
+    model.add(Dense(1000, activation='relu'))
 
     #model.add(Dropout(0.25))
 
@@ -109,7 +109,7 @@ def build_cnn(nr_convs):
     model.add(Dense(2, activation='softmax'))
     #
     #sgd = SGD(lr=1e-6, decay=4e-5, momentum=0.9, nesterov=True)
-    sgd = SGD(lr=1e-6, decay=1e-6, momentum=0.9, nesterov=True)
+    sgd = SGD(lr=1e-5, decay=1e-6, momentum=0.9, nesterov=True)
     model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
 
     return model
