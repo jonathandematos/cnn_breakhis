@@ -12,7 +12,7 @@ from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_rep
 from keras.models import load_model
 from keras import regularizers
 import sys
-import keras.applications.vgg19
+import keras.applications.vgg19 as vgg19
 import os
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 #os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -50,12 +50,12 @@ def build_cnn():
     x = Dense(64, activation="relu")(x)
     x = Dense(2, activation="softmax")(x)
   
-    model = Model(inputs=vgg_inst.inputs, outputs=x
+    model = Model(inputs=vgg_inst.inputs, outputs=x)
 
     for i in model.layers:
         i.trainable = False
 
-    trainable_layers = [""]
+    trainable_layers = ["block3_pool","block4_conv1","block4_conv2","block4_conv3","block4_conv4","block4_pool","block5_conv1","block5_conv2","block5_conv3","block5_conv4","block5_pool","flatten","fc1","fc2","predictions","dense_1","dense_2"]
 
     for i in trainable_layers:
         model.get_layer(i).trainable = True
@@ -238,7 +238,7 @@ def TumorToLabel(tumor):
 #
 #
 #
-model = build_cnn(int(sys.argv[1]))
+model = build_cnn()
 model.summary()
 print(model.optimizer.get_config())
 print("Epochs: ",EPOCHS)
