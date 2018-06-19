@@ -44,7 +44,7 @@ HEIGHT = 230
 def build_cnn(nr_convs):
     model = Sequential()
 
-    model.add(Conv2D(32, (7, 7), strides=(1,1), name="conv1", activation='relu', input_shape=(HEIGHT,WIDTH,3)))
+    model.add(Conv2D(32, (5, 5), strides=(1,1), name="conv1", activation='relu', input_shape=(HEIGHT,WIDTH,3)))
     model.add(BatchNormalization(axis=3, name="batch1"))
     model.add(MaxPooling2D(pool_size=(2,2), name="max1"))
     
@@ -87,13 +87,12 @@ def build_cnn(nr_convs):
         model.add(BatchNormalization(axis=3, name="batch8"))
         #model.add(Dropout(0.25))
 
-
     if(nr_convs > 8):
         model.add(Conv2D(32, (3, 3), name="conv9", activation='relu'))
         model.add(BatchNormalization(axis=3, name="batch9"))
         model.add(MaxPooling2D(pool_size=(2,2), name="max9"))
 
-    model.add(Dropout(0.40))
+    model.add(Dropout(0.2))
     #
     model.add(Flatten())
 
@@ -109,14 +108,14 @@ def build_cnn(nr_convs):
     model.add(Dense(2, activation='softmax'))
     #
     #sgd = SGD(lr=1e-6, decay=4e-5, momentum=0.9, nesterov=True)
-    sgd = SGD(lr=1e-5, decay=1e-6, momentum=0.9, nesterov=True)
+    sgd = SGD(lr=1e-6, decay=1e-6, momentum=0.9, nesterov=True)
     model.compile(optimizer=sgd, loss='categorical_crossentropy', metrics=['accuracy'])
 
     return model
 #    
 #
 #
-model = load_model
+#model = load_model
 #
 #
 #    
@@ -138,7 +137,7 @@ def set_callbacks(run_name):
     callbacks.append(reduce_lr)
     #
     earlyStopping = EarlyStopping(monitor='val_loss', patience=15, verbose=1, mode='min')
-    callbacks.append(earlyStopping)
+    #callbacks.append(earlyStopping)
     return callbacks
 #
 #
@@ -218,21 +217,33 @@ def print_prediction(model, img_list, main_batch_size, run_name, output_predicti
     conf_by_tumor = np.zeros((8,2))
     labels = list()
     class_count = np.array([0,0])
+    imgname = list()
+    predictions = list()
     #
     if(output_prediction):
         fpred = open("predictions/{}".format(run_name), "w")
     #
     for x, y, z in ReadImgs(img_list, width=WIDTH, height=HEIGHT):
-        predictions = model.predict(np.array([x])).squeeze()
-        if(output_prediction):
-            fpred.write("{};{};".format(z.split("/")[-1], y.argmax()))
+        predictions.append(model.predict(np.array([x])).squeeze())
         labels.append(y.argmax())
-        class_count += y
-        preds.append(predictions.argmax())
-        preds_proba.append(predictions[y.argmax()])
-        conf_by_tumor[TumorToLabel(z)][np.argmax(predictions)] += 1
+        imgname.append(z)
+    #
+    predictions = np.array(predictions)
+    class_count_real, class_count_aug = classes_count(LoadBreakhisList(TRAIN_FILE))
+    predictions /= class_count_aug
+    predictions *= class_count_real
+    print("P_train: ",class_count_aug)
+    print("P_real: ",class_count_real)
+    #
+    for i in range(len(predictions)):   
         if(output_prediction):
-            for j in predictions:
+            fpred.write("{};{};".format(imgname[i].split("/")[-1], labels[i]))
+        class_count[labels[i]] += 1
+        preds.append(predictions[i].argmax())
+        preds_proba.append(predictions[i][labels[i]])
+        conf_by_tumor[TumorToLabel8(imgname[i])][np.argmax(predictions[i])] += 1
+        if(output_prediction):
+            for j in predictions[i]:
                 fpred.write("{:.4f};".format(j))
             fpred.write("\n")
     #
@@ -257,23 +268,23 @@ def print_prediction(model, img_list, main_batch_size, run_name, output_predicti
                 print("Accuracy per class: {:.3f} {:.3f} {:.3f}\n".format(float(a[0][0])/(a[0][0]+a[0][1]), float(a[1][1])/(a[1][0]+a[1][1]), (float(a[0][0])/(a[0][0]+a[0][1])+float(a[1][1])/(a[1][0]+a[1][1]))/2))
     else:
                 print("Zero predictions in one class.")
-    print("Confusion by tumor type: ", conf_by_tumor)
+    print("Confusion by tumor type: \n", conf_by_tumor)
     print("Accuracy by patient: ", accuracy_by_patient(img_list, labels, preds))
     print("Malign  Benign")
     print("M_LC\nM_MC\nM_PC\nM_DC\nB_TA\nB_A\nB_PT\nB_F")
 #
 #
 #
-def TumorToLabel(tumor):
+def TumorToLabel8(tumor):
     tumor_lbl = 8
+    if(tumor.find("SOB_M_DC") != -1):
+        tumor_lbl = 3
     if(tumor.find("SOB_M_LC") != -1):
         tumor_lbl = 0
     if(tumor.find("SOB_M_MC") != -1):
         tumor_lbl = 1
     if(tumor.find("SOB_M_PC") != -1):
         tumor_lbl = 2
-    if(tumor.find("SOB_M_DC") != -1):
-        tumor_lbl = 3
     if(tumor.find("SOB_B_TA") != -1):
         tumor_lbl = 4
     if(tumor.find("SOB_B_A") != -1):
@@ -285,6 +296,18 @@ def TumorToLabel(tumor):
     if(tumor_lbl == 8):
         print(tumor)
     return tumor_lbl
+#
+#
+#
+def classes_count(train_imgs):
+    class_count_real = np.array([0,0])
+    class_count_aug = np.array([0,0])
+    for i in train_imgs:
+        label = TumorToLabel(i)
+        if(i.find("rotat") == -1 and i.find("flip") == -1 and i.find("trans") == -1):
+            class_count_real += label
+        class_count_aug += label
+    return class_count_real.astype("float32")/(class_count_real[0]+class_count_real[1]), class_count_aug.astype("float32")/(class_count_aug[0]+class_count_aug[1])
 #
 #
 #
@@ -336,63 +359,6 @@ print("###################################\nTrain predictions:")
 print_prediction(model, train_imgs, main_batch_size, sys.argv[2], output_prediction=False)
 #
 #
-#
-exit(0)
-
-
-
-
-
-
-test_imgs = LoadBreakhisList(TEST_FILE)  
-#random.shuffle(test_imgs)
-#test_imgs = test_imgs[:1000]
-#
-scores = model.evaluate_generator(GeneratorImgs(test_imgs, batch_size=main_batch_size, height=HEIGHT, width=WIDTH), 
-        steps=len(test_imgs)/main_batch_size)
-#
-print('Test loss: {:.4f}'.format(scores[0]))
-print('Test accuracy: {:.4f}'.format(scores[1]))
-#
-preds_proba = list()
-preds = list()
-labels = list()
-preds_list = list()
-#
-fpred = open("predictions/{}".format(sys.argv[2]), "w")
-#
-total_class = np.array([0,0])
-for x, y, z in ReadImgs(test_imgs):
-    predictions = model.predict(np.array([x])).squeeze()
-    preds_list.append(predictions)
-    total_class += y
-    fpred.write("{};{};".format(z.split("/")[-1], y.argmax()))
-    labels.append(y.argmax())
-    preds.append(predictions.argmax())
-    preds_proba.append(predictions[y.argmax()])
-    for j in predictions:
-        fpred.write("{:.4f};".format(j))
-    fpred.write("\n")
-#
-fpred.close()
-#
-fpr, tpr, _ = roc_curve(labels, preds_proba, pos_label=0)
-roc_auc = auc(fpr, tpr)
-#
-print("Test AUC 0: {:.4f}".format(roc_auc))
-#
-print(classification_report(labels, preds, target_names=["malign", "benign"]))
-#
-#fpr, tpr, _ = roc_curve(labels, preds_proba, pos_label=1)
-#roc_auc = auc(fpr, tpr)
-#
-#print("Test AUC 1: {:.4f}".format(roc_auc))
-a = confusion_matrix(labels, preds)
-print("Confusion matrix:\n",a)
-print("Total for each class:", total_class)
-print("Accuracy per class: {:.3f} {:.3f} {:.3f}\n".format(float(a[0][0])/(a[0][0]+a[0][1]), float(a[1][1])/(a[1][0]+a[1][1]), (float(a[0][0])/(a[0][0]+a[0][1])+float(a[1][1])/(a[1][0]+a[1][1]))/2))
-#
-#accuracy_by_image(test_imgs, labels, preds_list)
 #
 sys.stdout.close()
 exit(0)
