@@ -1,11 +1,12 @@
 from __future__ import print_function
 import keras
+import keras.backend as K
 from keras import applications
 from keras import Sequential, Model
 from keras.layers import Dense, Dropout, Input, Flatten, Conv2D, MaxPooling2D, BatchNormalization, AveragePooling2D
 from keras.optimizers import SGD
 from breakhis_generator_validation import LoadBreakhisList, Generator, GeneratorImgs, ReadImgs, TumorToLabel
-from keras.callbacks import ModelCheckpoint,LearningRateScheduler,ReduceLROnPlateau, TensorBoard, EarlyStopping
+from keras.callbacks import ModelCheckpoint,LearningRateScheduler,ReduceLROnPlateau, TensorBoard, EarlyStopping, Callback
 import random
 import numpy as np
 from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_report
@@ -13,8 +14,8 @@ from keras.models import load_model
 from keras import regularizers
 import sys
 import os
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-#os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import tensorflow as tf
 config = tf.ConfigProto()
@@ -29,15 +30,15 @@ tf_bkend.set_session(sess)
 #
 #
 sys.stdout = open(sys.argv[2], "w")
-EPOCHS = 40
+EPOCHS = 60
 BATCH_SIZE = 32
 HOME = os.environ['HOME']
 TRAIN_EXPERIMENT = sys.argv[3]
 TRAIN_FILE = TRAIN_EXPERIMENT #HOME+"/data/BreaKHis_v1/folds_nonorm_dataaug/dsfold2-100-train.txt"
 VAL_FILE = TRAIN_EXPERIMENT.replace("train", "validation") #HOME+"/data/BreaKHis_v1/folds_nonorm_dataaug/dsfold2-100-validation.txt"
 TEST_FILE = TRAIN_EXPERIMENT.replace("train", "test") #HOME+"/data/BreaKHis_v1/folds_nonorm_dataaug/dsfold2-100-test.txt"
-WIDTH = 350
-HEIGHT = 230
+WIDTH = 150
+HEIGHT = 150
 #
 #
 #
@@ -46,24 +47,24 @@ def build_cnn(nr_convs):
 
     model.add(Conv2D(32, (5, 5), strides=(1,1), name="conv1", activation='relu', input_shape=(HEIGHT,WIDTH,3)))
     model.add(BatchNormalization(axis=3, name="batch1"))
-    model.add(MaxPooling2D(pool_size=(2,2), name="max1"))
+    #model.add(MaxPooling2D(pool_size=(2,2), name="max1"))
     
     if(nr_convs > 1):
-        model.add(Conv2D(64, (3, 3), strides=(1,1), name="conv2", activation='relu'))
+        model.add(Conv2D(32, (5, 5), strides=(1,1), name="conv2", activation='relu'))
         model.add(BatchNormalization(axis=3, name="batch2"))
         model.add(MaxPooling2D(pool_size=(2,2), name="max2"))
         #model.add(Dropout(0.25))
 
     if(nr_convs > 2):
-        model.add(Conv2D(32, (3, 3), name="conv3", activation='relu'))
+        model.add(Conv2D(64, (3, 3), name="conv3", activation='relu'))
         model.add(BatchNormalization(axis=3, name="batch3"))
         model.add(MaxPooling2D(pool_size=(2,2), name="max3"))
         #model.add(Dropout(0.25))
 
     if(nr_convs > 3):
-        model.add(Conv2D(32, (3, 3), name="conv4", activation='relu'))
+        model.add(Conv2D(128, (3, 3), name="conv4", activation='relu'))
         model.add(BatchNormalization(axis=3, name="batch4"))
-        model.add(MaxPooling2D(pool_size=(2,2), name="max4"))
+        #model.add(MaxPooling2D(pool_size=(2,2), name="max4"))
         #model.add(Dropout(0.25))
         
     if(nr_convs > 4):
@@ -99,11 +100,11 @@ def build_cnn(nr_convs):
     #model.add(Dense(2048, activation='relu'))
     #model.add(Dropout(0.25))
 
-    model.add(Dense(1000, activation='relu'))
+    #model.add(Dense(1000, activation='relu'))
 
     #model.add(Dropout(0.25))
 
-    model.add(Dense(64, activation='relu'))
+    #model.add(Dense(64, activation='relu'))
 
     model.add(Dense(2, activation='softmax'))
     #
@@ -119,6 +120,10 @@ def build_cnn(nr_convs):
 #
 #
 #    
+class EpochEnd(Callback):
+    def on_epoch_end(self, epoch, logs=None):
+        print("Learning rate: ",K.eval(self.model.optimizer.lr))
+#        
 def set_callbacks(run_name):
     callbacks = list()
     checkpoint = ModelCheckpoint(filepath="models/{}".format(run_name),
@@ -133,11 +138,14 @@ def set_callbacks(run_name):
                             embeddings_layer_names=None, embeddings_metadata=None)
     callbacks.append(board)
     #
-    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-11)
+    reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-11, verbose=1)
     callbacks.append(reduce_lr)
     #
     earlyStopping = EarlyStopping(monitor='val_loss', patience=15, verbose=1, mode='min')
     #callbacks.append(earlyStopping)
+    #
+    epochend = EpochEnd()
+    callbacks.append(epochend)
     return callbacks
 #
 #
@@ -345,7 +353,7 @@ nr_batches = len(train_imgs)/main_batch_size
 model.fit_generator(GeneratorImgs(train_imgs, batch_size=main_batch_size, height=HEIGHT, width=WIDTH), \
         validation_steps=nr_batches_val, \
         validation_data=GeneratorImgs(val_imgs, batch_size=main_batch_size, height=HEIGHT, width=WIDTH), \
-        steps_per_epoch=nr_batches, epochs=EPOCHS, verbose=True, max_queue_size=1, \
+        steps_per_epoch=nr_batches, epochs=EPOCHS, verbose=2, max_queue_size=1, \
         workers=1, use_multiprocessing=False, \
         callbacks=set_callbacks("cnn_growing_{}".format(sys.argv[2])))
 #

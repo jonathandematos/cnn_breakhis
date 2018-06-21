@@ -14,8 +14,8 @@ from keras import regularizers
 import sys
 import keras.applications.nasnet as nasnet
 import os
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-#os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import tensorflow as tf
 config = tf.ConfigProto()
@@ -30,8 +30,8 @@ tf_bkend.set_session(sess)
 #
 #
 sys.stdout = open(sys.argv[2], "w")
-EPOCHS = 40
-BATCH_SIZE = 16
+EPOCHS = 60
+BATCH_SIZE = 8
 HOME = os.environ['HOME']
 TRAIN_EXPERIMENT = sys.argv[3]
 TRAIN_FILE = TRAIN_EXPERIMENT #HOME+"/data/BreaKHis_v1/folds_nonorm_dataaug/dsfold2-100-train.txt"
@@ -44,13 +44,13 @@ HEIGHT = 331
 #
 def build_cnn():
 
-    vgg_inst = nasnet.NASNetLarge(include_top=True, weights='imagenet', input_tensor=None, input_shape=(HEIGHT,WIDTH,3), pooling=None, classes=1000)
+    nasnet_inst = nasnet.NASNetLarge(include_top=True, weights='imagenet', input_tensor=None, input_shape=(HEIGHT,WIDTH,3), pooling=None, classes=1000)
 
-    x = vgg_inst.output
+    x = nasnet_inst.output
     x = Dense(64, activation="relu")(x)
     x = Dense(2, activation="softmax")(x)
   
-    model = Model(inputs=vgg_inst.inputs, outputs=x)
+    model = Model(inputs=nasnet_inst.inputs, outputs=x)
 
     for i in model.layers:
         i.trainable = True
@@ -232,7 +232,7 @@ def set_callbacks(run_name):
                              verbose=1,
                              save_best_only=True)
     
-    callbacks.append(checkpoint)
+    #callbacks.append(checkpoint)
     board = TensorBoard(log_dir='all_logs/{}'.format(run_name), histogram_freq=False,
                             write_graph=False, write_grads=True,
                             write_images=False, embeddings_freq=0,
@@ -428,7 +428,7 @@ nr_batches = len(train_imgs)/main_batch_size
 model.fit_generator(GeneratorImgs(train_imgs, batch_size=main_batch_size, height=HEIGHT, width=WIDTH), \
         validation_steps=nr_batches_val, \
         validation_data=GeneratorImgs(val_imgs, batch_size=main_batch_size, height=HEIGHT, width=WIDTH), \
-        steps_per_epoch=nr_batches, epochs=EPOCHS, verbose=True, max_queue_size=1, \
+        steps_per_epoch=nr_batches, epochs=EPOCHS, verbose=2, max_queue_size=1, \
         workers=1, use_multiprocessing=False, \
         callbacks=set_callbacks("cnn_growing_{}".format(sys.argv[2])))
 #

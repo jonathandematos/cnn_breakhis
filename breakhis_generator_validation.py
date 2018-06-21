@@ -21,8 +21,7 @@ def LoadBreakhisList(filename):
     #
     return file_list
 #
-def Generator(file_list, batch_size=32, width=224, height=224):
-    lmdb_file = "lmdb_test.db/"
+def Generator(file_list, batch_size=32, width=224, height=224, lmdb_file=None):
     env_handler = lmdb.open(lmdb_file, readonly=True)
     db_handler = env_handler.begin()
     while( 1 ):
@@ -91,6 +90,28 @@ def TumorToLabel(tumor):
         return numpy.array([0,1])
     print("Error tumor type: {}".format(tumor))
     return numpy.array([0,1])
+#
+def TumorToLabel8(tumor):
+    tumor_lbl = 8
+    if(tumor.find("SOB_M_DC") != -1):
+        tumor_lbl = 3
+    if(tumor.find("SOB_M_LC") != -1):
+        tumor_lbl = 0
+    if(tumor.find("SOB_M_MC") != -1):
+        tumor_lbl = 1
+    if(tumor.find("SOB_M_PC") != -1):
+        tumor_lbl = 2
+    if(tumor.find("SOB_B_TA") != -1):
+        tumor_lbl = 4
+    if(tumor.find("SOB_B_A") != -1):
+        tumor_lbl = 5
+    if(tumor.find("SOB_B_PT") != -1):
+        tumor_lbl = 6
+    if(tumor.find("SOB_B_F") != -1):
+        tumor_lbl = 7
+    if(tumor_lbl == 8):
+        print(tumor)
+    return tumor_lbl
 #
 def ExtractFeature(img_name, db_handler):
     #im = mh.imread(img_name)
