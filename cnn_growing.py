@@ -15,7 +15,7 @@ from keras import regularizers
 import sys
 import os
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import tensorflow as tf
 config = tf.ConfigProto()
@@ -31,14 +31,14 @@ tf_bkend.set_session(sess)
 #
 sys.stdout = open(sys.argv[2], "w")
 EPOCHS = 60
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 HOME = os.environ['HOME']
 TRAIN_EXPERIMENT = sys.argv[3]
 TRAIN_FILE = TRAIN_EXPERIMENT #HOME+"/data/BreaKHis_v1/folds_nonorm_dataaug/dsfold2-100-train.txt"
 VAL_FILE = TRAIN_EXPERIMENT.replace("train", "validation") #HOME+"/data/BreaKHis_v1/folds_nonorm_dataaug/dsfold2-100-validation.txt"
 TEST_FILE = TRAIN_EXPERIMENT.replace("train", "test") #HOME+"/data/BreaKHis_v1/folds_nonorm_dataaug/dsfold2-100-test.txt"
-WIDTH = 150
-HEIGHT = 150
+WIDTH = 350
+HEIGHT = 230
 #
 #
 #
@@ -142,7 +142,7 @@ def set_callbacks(run_name):
     callbacks.append(reduce_lr)
     #
     earlyStopping = EarlyStopping(monitor='val_loss', patience=15, verbose=1, mode='min')
-    #callbacks.append(earlyStopping)
+    callbacks.append(earlyStopping)
     #
     epochend = EpochEnd()
     callbacks.append(epochend)
@@ -355,18 +355,25 @@ model.fit_generator(GeneratorImgs(train_imgs, batch_size=main_batch_size, height
         validation_data=GeneratorImgs(val_imgs, batch_size=main_batch_size, height=HEIGHT, width=WIDTH), \
         steps_per_epoch=nr_batches, epochs=EPOCHS, verbose=2, max_queue_size=1, \
         workers=1, use_multiprocessing=False, \
-        callbacks=set_callbacks("cnn_growing_{}".format(sys.argv[2])))
+        callbacks=set_callbacks("{}".format(sys.argv[2])))
 #
 del val_imgs
 #
+predictions = list()
+labels = list()
+imgname = list()
 test_imgs = LoadBreakhisList(TEST_FILE)
-print("###################################\nTest predictions:")
-print_prediction(model, test_imgs, main_batch_size, sys.argv[2], output_prediction=True)
-#
-print("###################################\nTrain predictions:")
-print_prediction(model, train_imgs, main_batch_size, sys.argv[2], output_prediction=False)
-#
-#
+fpred = open("predictions/"+sys.argv[2], "w")
+for x, y, z in ReadImgs(test_imgs, width=WIDTH, height=HEIGHT):
+    preds = model.predict(np.array([x])).squeeze()
+    predictions.append(preds)
+    labels.append(y.argmax())
+    imgname.append(z)
+    fpred.write("{};{}".format(z.split("/")[-1], y.argmax()))
+    for j in preds:
+        fpred.write(";{:.4f}".format(j))
+    fpred.write("\n")
+fpred.close()
 #
 sys.stdout.close()
 exit(0)

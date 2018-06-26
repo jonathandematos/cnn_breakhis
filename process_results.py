@@ -2,12 +2,14 @@ from __future__ import print_function
 import datetime
 import numpy as np
 import sys
-from breakhis_generator_validation import TumorToLabel, TumorToLabel8
+from breakhis_generator_validation import TumorToLabel, TumorToLabel8, ReadImgs
 from sklearn.metrics import confusion_matrix, roc_curve, auc, classification_report
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 #
+WIDTH=150
+HEIGHT=150
 #
 def load_predictions(prediction_file):
     Z = list()
@@ -22,7 +24,10 @@ def load_predictions(prediction_file):
                 Z.append(values[0])
                 predict.append(np.array([float(values[2]),float(values[3])]))
                 label.append(int(values[1]))
-    return Z, label, predict
+    pred_np = np.array(predict)
+    predict = (pred_np - np.min(pred_np))/(np.max(pred_np)-np.min(pred_np))
+    print(predict.max(), predict.min())
+    return Z, label, np.array(predict)
 
 
 
@@ -97,53 +102,28 @@ def accuracy_by_patient(img_list, labels, predictions):
 #
 #
 #
-def print_prediction(model=None, img_list=None, main_batch_size=None, output_prediction=False, prediction_file=None, patches=False, train_imgs=None):
+def print_prediction(patches=True, train_imgs=None, predictions=None, labels=None, imgname=None, prediction_file=None):
     #
-    preds_proba = list()
     preds = list()
     conf_by_tumor = np.zeros((8,2))
-    labels = list()
     class_count = np.array([0,0])
-    imgname = list()
-    predictions = list()
     #
-    #
-    if(prediction_file != None and output_prediction == False):
+    if(prediction_file != None):
         imgname, labels, predictions = load_predictions(prediction_file)
-    else:
-        if(output_prediction == True):
-            if(prediction_file != None ):
-                fpred = open("predictions/"+prediction_file, "r")
-            else:
-                now = datetime.datetime.now()
-                fpred = open("predictions/{}.txt".format(now.strftime("%Y%m%d-%H%M%S")), "r")
-        for x, y, z in ReadImgs(img_list, width=WIDTH, height=HEIGHT):
-            predictions.append(model.predict(np.array([x])).squeeze())
-            labels.append(y.argmax())
-            imgname.append(z)
     #
-    predictions = np.array(predictions)
-    class_count_real, class_count_aug = classes_count(imgname)
-    predictions /= class_count_aug
-    predictions *= class_count_real
-    correct = 0
-    total = 0
-    print("P_train: ",class_count_aug)
-    print("P_real: ",class_count_real)
+    if(train_imgs == None):
+        class_count_real, class_count_aug = classes_count(imgname)
+        predictions /= class_count_aug
+        predictions *= class_count_real
+        correct = 0
+        total = 0
+        print("P_train: ",class_count_aug)
+        print("P_real: ",class_count_real)
     #
-    for i in range(len(predictions)):   
-        if(output_prediction):
-            fpred.write("{};{};".format(imgname[i].split("/")[-1], labels[i]))
+    for i in range(0,predictions.shape[0]):   
         class_count[labels[i]] += 1
         preds.append(predictions[i].argmax())
         conf_by_tumor[TumorToLabel8(imgname[i])][np.argmax(predictions[i])] += 1
-        if(output_prediction):
-            for j in predictions[i]:
-                fpred.write("{:.4f};".format(j))
-            fpred.write("\n")
-    #
-    if(output_prediction):
-        fpred.close()
     #
     fpr, tpr, _ = roc_curve(labels, predictions[:,0], pos_label=0)
     roc_auc = auc(fpr, tpr)
@@ -204,7 +184,7 @@ def classes_count(train_imgs):
     return class_count_real.astype("float32")/(class_count_real[0]+class_count_real[1]), class_count_aug.astype("float32")/(class_count_aug[0]+class_count_aug[1])
 #
 def main():
-    print_prediction(prediction_file=sys.argv[1])
+    print_prediction(prediction_file=sys.argv[1], patches=True)
 
 if __name__ == "__main__":
     main()
