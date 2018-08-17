@@ -8,8 +8,9 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 #
-WIDTH=150
-HEIGHT=150
+WIDTH = 150
+HEIGHT = 150
+patches = False
 #
 def load_predictions(prediction_file):
     Z = list()
@@ -129,10 +130,6 @@ def print_prediction(patches=True, train_imgs=None, predictions=None, labels=Non
     roc_auc = auc(fpr, tpr)
     print("Test AUC 0: {:.4f}".format(roc_auc))
     #
-    fpr, tpr, _ = roc_curve(labels, predictions[:,1], pos_label=1)
-    roc_auc = auc(fpr, tpr)
-    print("Test AUC 1: {:.4f}".format(roc_auc))
-    #
     plt.ioff()
     fig = plt.figure()
     plt.plot(fpr, tpr, color='red',
@@ -142,7 +139,7 @@ def print_prediction(patches=True, train_imgs=None, predictions=None, labels=Non
     plt.ylim([0.0, 1.05])
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-    plt.title('Receiver operating characteristic example')
+    plt.title('ROC Curve')
     plt.legend(loc="lower right")
     plt.savefig("roc_curve.png")
     plt.close(fig)
@@ -161,13 +158,13 @@ def print_prediction(patches=True, train_imgs=None, predictions=None, labels=Non
                 print("Accuracy per class: {:.3f} {:.3f} {:.3f}\n".format(float(a[0][0])/(a[0][0]+a[0][1]), float(a[1][1])/(a[1][0]+a[1][1]), (float(a[0][0])/(a[0][0]+a[0][1])+float(a[1][1])/(a[1][0]+a[1][1]))/2))
     else:
                 print("Zero predictions in one class.")
-    print("Confusion by tumor type: \n", conf_by_tumor)
+    print("Confusion by tumor type: \n", conf_by_tumor.astype("int"))
     if(patches == True):
         img_list_dict, labels_dict, preds_sum, preds_vote = accuracy_by_image(imgname, labels, predictions)
         print("Accuracy by patient sum: ", accuracy_by_patient(img_list_dict, labels_dict, preds_sum))
         print("Accuracy by patient vote: ", accuracy_by_patient(img_list_dict, labels_dict, preds_vote))
     else:
-        print("Accuracy by patient: ", accuracy_by_patient(imgname, labels, preds))
+        print("Accuracy by patient: ", accuracy_by_patient(imgname, labels, predictions))
     print("Malign  Benign")
     print("M_LC\nM_MC\nM_PC\nM_DC\nB_TA\nB_A\nB_PT\nB_F")
 #
@@ -184,7 +181,7 @@ def classes_count(train_imgs):
     return class_count_real.astype("float32")/(class_count_real[0]+class_count_real[1]), class_count_aug.astype("float32")/(class_count_aug[0]+class_count_aug[1])
 #
 def main():
-    print_prediction(prediction_file=sys.argv[1], patches=True)
+    print_prediction(prediction_file=sys.argv[1], patches=patches)
 
 if __name__ == "__main__":
     main()
