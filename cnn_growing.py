@@ -14,8 +14,13 @@ from keras.models import load_model
 from keras import regularizers
 import sys
 import os
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
+if(len(sys.argv) != 4):
+    print("cnn_growing.py nr_conv_layers output_file train_file")
+    exit(0)
+
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 import tensorflow as tf
 config = tf.ConfigProto()
@@ -29,9 +34,9 @@ tf_bkend.set_session(sess)
 #
 #
 #
-sys.stdout = open(sys.argv[2], "w")
+sys.stdout = open("outputs/"+sys.argv[2], "w")
 EPOCHS = 60
-BATCH_SIZE = 16
+BATCH_SIZE = 8
 HOME = os.environ['HOME']
 TRAIN_EXPERIMENT = sys.argv[3]
 TRAIN_FILE = TRAIN_EXPERIMENT #HOME+"/data/BreaKHis_v1/folds_nonorm_dataaug/dsfold2-100-train.txt"
@@ -47,7 +52,7 @@ def build_cnn(nr_convs):
 
     model.add(Conv2D(32, (5, 5), strides=(1,1), name="conv1", activation='relu', input_shape=(HEIGHT,WIDTH,3)))
     model.add(BatchNormalization(axis=3, name="batch1"))
-    #model.add(MaxPooling2D(pool_size=(2,2), name="max1"))
+    model.add(MaxPooling2D(pool_size=(2,2), name="max1"))
     
     if(nr_convs > 1):
         model.add(Conv2D(32, (5, 5), strides=(1,1), name="conv2", activation='relu'))
@@ -64,11 +69,11 @@ def build_cnn(nr_convs):
     if(nr_convs > 3):
         model.add(Conv2D(128, (3, 3), name="conv4", activation='relu'))
         model.add(BatchNormalization(axis=3, name="batch4"))
-        #model.add(MaxPooling2D(pool_size=(2,2), name="max4"))
+        model.add(MaxPooling2D(pool_size=(2,2), name="max4"))
         #model.add(Dropout(0.25))
         
     if(nr_convs > 4):
-        model.add(Conv2D(192, (3, 3), name="conv5", activation='relu'))
+        model.add(Conv2D(128, (3, 3), name="conv5", activation='relu'))
         model.add(BatchNormalization(axis=3, name="batch5"))
         #model.add(MaxPooling2D(pool_size=(2,2), name="max5"))
         #model.add(Dropout(0.25))
@@ -100,11 +105,11 @@ def build_cnn(nr_convs):
     #model.add(Dense(2048, activation='relu'))
     #model.add(Dropout(0.25))
 
-    #model.add(Dense(1000, activation='relu'))
+    model.add(Dense(1000, activation='relu'))
 
     #model.add(Dropout(0.25))
 
-    #model.add(Dense(64, activation='relu'))
+    model.add(Dense(64, activation='relu'))
 
     model.add(Dense(2, activation='softmax'))
     #
@@ -142,7 +147,7 @@ def set_callbacks(run_name):
     callbacks.append(reduce_lr)
     #
     earlyStopping = EarlyStopping(monitor='val_loss', patience=15, verbose=1, mode='min')
-    callbacks.append(earlyStopping)
+    #callbacks.append(earlyStopping)
     #
     epochend = EpochEnd()
     callbacks.append(epochend)
